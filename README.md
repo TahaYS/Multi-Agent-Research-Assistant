@@ -70,7 +70,15 @@ GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxx
 
 ## Running the application
 
-### Start the FastAPI backend
+### Streamlit UI (calls the pipeline directly — no separate server needed)
+
+```bash
+streamlit run streamlit_app.py
+```
+
+Open `http://localhost:8501` in your browser, enter a topic, and click **Run Research**.
+
+### FastAPI backend (optional — for programmatic / REST access)
 
 ```bash
 uvicorn api.app:app --reload
@@ -79,15 +87,18 @@ uvicorn api.app:app --reload
 The API will be available at:
 - **REST endpoint:** `http://localhost:8000/research`
 - **Swagger UI docs:** `http://localhost:8000/docs`
-- **ReDoc docs:** `http://localhost:8000/redoc`
 
-### Start the Streamlit frontend (separate terminal)
+---
 
-```bash
-streamlit run frontend/app.py
-```
+## Deploying to Streamlit Cloud
 
-Open `http://localhost:8501` in your browser, enter a topic, and click **Run Research**.
+1. Push the repo to GitHub.
+2. Go to [share.streamlit.io](https://share.streamlit.io), connect the repo, and set the **main file** to `streamlit_app.py`.
+3. Under **Settings → Secrets**, add:
+   ```toml
+   GROQ_API_KEY = "gsk_xxxxxxxxxxxxxxxxxxxxxxxx"
+   ```
+4. Click **Deploy**. No server setup required — the Streamlit app invokes the LangGraph pipeline in-process.
 
 ---
 
@@ -135,10 +146,11 @@ multi-agent-research-assistant/
 │   ├── app.py                  # FastAPI app factory
 │   └── routes.py               # POST /research endpoint
 ├── frontend/
-│   └── app.py                  # Streamlit UI
+│   └── app.py                  # Streamlit UI (calls LangGraph directly)
 ├── tests/
 │   └── test_smoke.py           # Import and schema smoke tests
-├── .env.example                # Template — copy to .env
+├── streamlit_app.py            # Streamlit Cloud entry point
+├── .env.example                # Template — copy to .env for local dev
 ├── requirements.txt
 ├── CLAUDE.md
 └── README.md
