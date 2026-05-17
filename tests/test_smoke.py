@@ -115,6 +115,72 @@ def test_retry_exhausts_all_attempts(monkeypatch):
     assert call_count["n"] == ra._MAX_RETRIES
 
 
+# ── No-results / parsing-error handling ──────────────────────────────────────
+
+def test_no_results_marker_raises_immediately(monkeypatch):
+    """LangChain's no-results sentinel must raise _WikipediaNoResultsError without retrying."""
+    import agents.research_agent as ra
+    from unittest.mock import MagicMock
+
+    mock_search = MagicMock()
+    mock_search.run.return_value = ra._WIKI_NO_RESULTS_MARKER
+    monkeypatch.setattr(ra, "_search", mock_search)
+    monkeypatch.setattr(ra, "_RETRY_DELAY", 0)
+
+    with pytest.raises(ra._WikipediaNoResultsError):
+        ra._search_with_retry("nonexistent topic xkcd123")
+
+    assert mock_search.run.call_count == 1  # must not have retried
+
+
+def test_empty_result_raises_immediately(monkeypatch):
+    """A blank result string is treated the same as no results — no retry."""
+    import agents.research_agent as ra
+    from unittest.mock import MagicMock
+
+    mock_search = MagicMock()
+    mock_search.run.return_value = "   "
+    monkeypatch.setattr(ra, "_search", mock_search)
+    monkeypatch.setattr(ra, "_RETRY_DELAY", 0)
+
+    with pytest.raises(ra._WikipediaNoResultsError):
+        ra._search_with_retry("blank topic")
+
+    assert mock_search.run.call_count == 1
+
+
+def test_research_agent_sets_final_report_on_no_results(monkeypatch):
+    """research_agent must set final_report to the friendly message and not crash."""
+    import agents.research_agent as ra
+    from unittest.mock import MagicMock
+
+    mock_search = MagicMock()
+    mock_search.run.return_value = ra._WIKI_NO_RESULTS_MARKER
+    monkeypatch.setattr(ra, "_search", mock_search)
+    monkeypatch.setattr(ra, "_RETRY_DELAY", 0)
+
+    state = {"topic": "xkcd nonexistent", "research_iterations": 0}
+    result = ra.research_agent(state)
+
+    assert result["final_report"] == ra.FRIENDLY_NO_RESULTS
+    assert result["raw_results"] == ""
+    assert mock_search.run.call_count == 1  # no retries
+
+
+def test_router_short_circuits_to_end_when_final_report_set():
+    """Router must return 'end' when final_report is already populated."""
+    from graph.builder import _route_after_research
+
+    state = {
+        "topic": "test",
+        "raw_results": "",
+        "summary": None,
+        "final_report": "No results found for this topic. Please try a more specific or well-known subject.",
+        "research_iterations": 1,
+    }
+    assert _route_after_research(state) == "end"
+
+
 # ── Request / Response models ─────────────────────────────────────────────────
 
 def test_research_request_rejects_empty_topic():

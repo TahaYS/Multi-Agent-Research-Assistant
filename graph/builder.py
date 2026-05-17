@@ -5,17 +5,15 @@ Graph topology:
   research_agent
        |
        v
-  [router: sufficient?]
-       |                \
-       | yes             | no (up to MAX_ITERATIONS)
-       v                 v
-  summarizer_agent   research_agent  (loop back)
+  [router]──── final_report already set ──► END   (no-results short-circuit)
        |
-       v
-  report_writer_agent
-       |
-       v
-      END
+       |──── results sufficient / max iterations ──► summarizer_agent
+       |                                                    |
+       └──── results insufficient ──► research_agent        v
+             (loop, up to MAX_ITERATIONS)           report_writer_agent
+                                                           |
+                                                           v
+                                                          END
 
 Persistent memory across steps is provided by MemorySaver, which checkpoints
 the state after every node so the graph can resume from any point.
@@ -37,12 +35,16 @@ MIN_RESULT_LENGTH = 200
 
 def _route_after_research(state: ResearchState) -> str:
     """
-    Conditional edge: decide whether research results are good enough.
+    Conditional edge: decide the next step after the Research Agent runs.
 
-    Returns 'summarize' if the raw results meet the quality threshold or
-    if we have already retried the maximum number of times.
-    Returns 'research' to loop back for another search pass otherwise.
+    Returns 'end'      if the agent already wrote a final_report (e.g. no results).
+    Returns 'summarize' if results are sufficient or max iterations reached.
+    Returns 'research'  to loop back for another search pass.
     """
+    # Short-circuit: research agent set final_report directly (no-results case).
+    if state.get("final_report"):
+        return "end"
+
     raw = state.get("raw_results") or ""
     iterations = state.get("research_iterations", 0)
 
@@ -72,12 +74,13 @@ def build_graph() -> StateGraph:
     # Entry point — always start with the Research Agent.
     workflow.set_entry_point("research_agent")
 
-    # Conditional edge after research: loop back or proceed to summarizer.
+    # Conditional edge after research: short-circuit, loop back, or proceed.
     workflow.add_conditional_edges(
         "research_agent",
         _route_after_research,
         {
-            "research": "research_agent",   # loop: results insufficient
+            "end": END,                      # no results — stop cleanly
+            "research": "research_agent",    # loop: results insufficient
             "summarize": "summarizer_agent", # proceed: results good enough
         },
     )
