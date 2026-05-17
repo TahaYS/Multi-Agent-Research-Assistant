@@ -54,6 +54,67 @@ def test_research_route_registered():
     assert "/research" in routes
 
 
+# ── DuckDuckGo retry logic ────────────────────────────────────────────────────
+
+def test_retry_succeeds_after_rate_limit(monkeypatch):
+    """Search should succeed on the third attempt after two rate-limit errors."""
+    import agents.research_agent as ra
+    from unittest.mock import MagicMock
+
+    call_count = {"n": 0}
+
+    def fake_run(topic):
+        call_count["n"] += 1
+        if call_count["n"] < 3:
+            raise Exception("DuckDuckGo 202 Ratelimit")
+        return "good results"
+
+    mock_search = MagicMock()
+    mock_search.run.side_effect = fake_run
+    monkeypatch.setattr(ra, "_search", mock_search)
+    monkeypatch.setattr(ra, "_RETRY_DELAY", 0)  # no sleeping in tests
+
+    result = ra._search_with_retry("test topic")
+    assert result == "good results"
+    assert call_count["n"] == 3
+
+
+def test_retry_raises_after_max_attempts(monkeypatch):
+    """Should raise RuntimeError once all retries are exhausted."""
+    import agents.research_agent as ra
+    from unittest.mock import MagicMock
+
+    mock_search = MagicMock()
+    mock_search.run.side_effect = Exception("202 Ratelimit")
+    monkeypatch.setattr(ra, "_search", mock_search)
+    monkeypatch.setattr(ra, "_RETRY_DELAY", 0)
+
+    with pytest.raises(RuntimeError, match="failed after 3 attempts"):
+        ra._search_with_retry("test topic")
+
+
+def test_non_rate_limit_error_not_retried(monkeypatch):
+    """Non-rate-limit exceptions should propagate immediately without retrying."""
+    import agents.research_agent as ra
+    from unittest.mock import MagicMock
+
+    call_count = {"n": 0}
+
+    def fake_run(topic):
+        call_count["n"] += 1
+        raise ValueError("some other error")
+
+    mock_search = MagicMock()
+    mock_search.run.side_effect = fake_run
+    monkeypatch.setattr(ra, "_search", mock_search)
+    monkeypatch.setattr(ra, "_RETRY_DELAY", 0)
+
+    with pytest.raises(ValueError, match="some other error"):
+        ra._search_with_retry("test topic")
+
+    assert call_count["n"] == 1  # must not have retried
+
+
 # ── Request / Response models ─────────────────────────────────────────────────
 
 def test_research_request_rejects_empty_topic():
