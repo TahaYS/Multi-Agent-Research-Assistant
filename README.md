@@ -1,6 +1,6 @@
 # Multi-Agent Research Assistant
 
-A production-grade research pipeline built with **LangGraph**, **LangChain**, **ChatGroq (Llama 3.1)**, **DuckDuckGo Search**, **FastAPI**, and **Streamlit**.
+A production-grade research pipeline built with **LangGraph**, **LangChain**, **ChatGroq (Llama 3.1)**, **Wikipedia**, **FastAPI**, and **Streamlit**.
 
 Three specialized AI agents collaborate in a stateful graph to turn any research topic into a structured markdown report — automatically.
 
@@ -27,7 +27,7 @@ Structured Markdown Report
 
 | Agent | Responsibility |
 |---|---|
-| **Research Agent** | Queries DuckDuckGo and returns raw search snippets |
+| **Research Agent** | Queries Wikipedia and returns raw article content |
 | **Summarizer Agent** | Distils raw results into bullet-point key findings |
 | **Report Writer Agent** | Compiles a structured report: Overview, Key Findings, Sources |
 
@@ -64,7 +64,7 @@ Open `.env` and set your Groq API key (get one free at <https://console.groq.com
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-> DuckDuckGo Search requires **no API key**.
+> Wikipedia requires **no API key**.
 
 ---
 
@@ -125,7 +125,7 @@ The smoke tests validate imports, graph topology, and request/response models wi
 ```
 multi-agent-research-assistant/
 ├── agents/
-│   ├── research_agent.py       # DuckDuckGo web search
+│   ├── research_agent.py       # Wikipedia search
 │   ├── summarizer_agent.py     # LLM-powered summarization
 │   └── report_writer_agent.py  # Markdown report generation
 ├── graph/

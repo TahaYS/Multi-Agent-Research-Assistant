@@ -14,7 +14,7 @@ class ResearchState(TypedDict):
     # The user-supplied research topic.
     topic: str
 
-    # Raw text returned by DuckDuckGo search.
+    # Raw text returned by Wikipedia query.
     raw_results: Optional[str]
 
     # Bullet-point summary produced by the Summarizer Agent.

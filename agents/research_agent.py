@@ -1,51 +1,47 @@
 """
-Research Agent — searches the web using DuckDuckGo and returns raw results.
+Research Agent — queries Wikipedia and returns raw article content.
 
-Receives the research topic from the graph state, runs the search with
-automatic retry on rate-limit errors, and stores raw result snippets back
-into state for the summarizer to consume.
+Receives the research topic from the graph state, runs the query with
+automatic retry on transient errors, and stores raw results back into
+state for the summarizer to consume.
 """
 
 import time
-from langchain_community.tools import DuckDuckGoSearchRun
+from langchain_community.tools import WikipediaQueryRun
+from langchain_community.utilities import WikipediaAPIWrapper
 from graph.state import ResearchState
 
 
-# One shared search tool instance; DuckDuckGo requires no API key.
-_search = DuckDuckGoSearchRun()
+# Wikipedia tool requires no API key; top_k_results limits pages fetched.
+_search = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper(top_k_results=3))
 
 _MAX_RETRIES = 3
-_RETRY_DELAY = 5  # seconds between attempts after a rate-limit error
+_RETRY_DELAY = 5  # seconds between attempts after a transient error
 
 
 def _search_with_retry(topic: str) -> str:
-    """Run a DuckDuckGo search, retrying up to _MAX_RETRIES times on rate limits."""
+    """Run a Wikipedia query, retrying up to _MAX_RETRIES times on transient errors."""
     last_error: Exception | None = None
 
     for attempt in range(1, _MAX_RETRIES + 1):
         try:
             return _search.run(topic)
         except Exception as exc:
-            # DuckDuckGo rate-limit responses surface as exceptions containing "202"
-            # or "Ratelimit" in the message.
-            if "202" in str(exc) or "ratelimit" in str(exc).lower():
-                last_error = exc
-                if attempt < _MAX_RETRIES:
-                    time.sleep(_RETRY_DELAY)
-            else:
-                raise  # non-rate-limit errors propagate immediately
+            last_error = exc
+            if attempt < _MAX_RETRIES:
+                time.sleep(_RETRY_DELAY)
 
     raise RuntimeError(
-        f"DuckDuckGo search failed after {_MAX_RETRIES} attempts: {last_error}"
+        f"Wikipedia search failed after {_MAX_RETRIES} attempts: {last_error}"
     )
 
 
 def research_agent(state: ResearchState) -> dict:
-    """LangGraph node: perform web research on the given topic."""
+    """LangGraph node: perform Wikipedia research on the given topic."""
 
     topic = state["topic"]
 
-    # Run the DuckDuckGo search with retry logic for rate-limit errors.
+    # Run the Wikipedia query with retry logic for transient errors.
     raw_results = _search_with_retry(topic)
 
     # Increment the iteration counter so the router can detect insufficient results.

@@ -1,7 +1,7 @@
 """
 Summarizer Agent — distills raw search results into concise key findings.
 
-Takes the raw DuckDuckGo text from state, sends it to the LLM with a focused
+Takes the raw Wikipedia text from state, sends it to the LLM with a focused
 prompt, and writes a bullet-point summary back into state for the report writer.
 """
 

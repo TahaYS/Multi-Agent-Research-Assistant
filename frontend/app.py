@@ -22,7 +22,7 @@ st.set_page_config(
 
 st.title("🔬 Multi-Agent Research Assistant")
 st.caption(
-    "Powered by LangGraph · ChatGroq (Llama 3.1) · DuckDuckGo Search"
+    "Powered by LangGraph · ChatGroq (Llama 3.1) · Wikipedia"
 )
 
 # ── Input form ────────────────────────────────────────────────────────────────

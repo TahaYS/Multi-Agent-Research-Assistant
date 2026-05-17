@@ -6,7 +6,7 @@
 - Never commit .env
 
 ## Stack
-- Python, LangGraph, LangChain, ChatGroq (Llama 3.1), DuckDuckGo, FastAPI, Streamlit
+- Python, LangGraph, LangChain, ChatGroq (Llama 3.1), Wikipedia, FastAPI, Streamlit
 
 ## Structure
 - agents/    — one file per agent (research, summarizer, report_writer)

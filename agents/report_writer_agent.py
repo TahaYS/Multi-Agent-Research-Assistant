@@ -38,7 +38,7 @@ def report_writer_agent(state: ResearchState) -> dict:
                 "1. ## Overview — a short paragraph introducing the topic.\n"
                 "2. ## Key Findings — the bullet-point findings.\n"
                 "3. ## Sources — list any URLs or source names found in the raw results; "
-                "if none are identifiable, write 'Sources derived from DuckDuckGo search'."
+                "if none are identifiable, write 'Sources derived from Wikipedia'."
             )
         ),
         HumanMessage(

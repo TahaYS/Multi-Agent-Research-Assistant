@@ -54,10 +54,10 @@ def test_research_route_registered():
     assert "/research" in routes
 
 
-# ── DuckDuckGo retry logic ────────────────────────────────────────────────────
+# ── Wikipedia retry logic ─────────────────────────────────────────────────────
 
-def test_retry_succeeds_after_rate_limit(monkeypatch):
-    """Search should succeed on the third attempt after two rate-limit errors."""
+def test_retry_succeeds_after_transient_error(monkeypatch):
+    """Search should succeed on the third attempt after two transient errors."""
     import agents.research_agent as ra
     from unittest.mock import MagicMock
 
@@ -66,7 +66,7 @@ def test_retry_succeeds_after_rate_limit(monkeypatch):
     def fake_run(topic):
         call_count["n"] += 1
         if call_count["n"] < 3:
-            raise Exception("DuckDuckGo 202 Ratelimit")
+            raise Exception("Wikipedia network error")
         return "good results"
 
     mock_search = MagicMock()
@@ -85,7 +85,7 @@ def test_retry_raises_after_max_attempts(monkeypatch):
     from unittest.mock import MagicMock
 
     mock_search = MagicMock()
-    mock_search.run.side_effect = Exception("202 Ratelimit")
+    mock_search.run.side_effect = Exception("Wikipedia network error")
     monkeypatch.setattr(ra, "_search", mock_search)
     monkeypatch.setattr(ra, "_RETRY_DELAY", 0)
 
@@ -93,8 +93,8 @@ def test_retry_raises_after_max_attempts(monkeypatch):
         ra._search_with_retry("test topic")
 
 
-def test_non_rate_limit_error_not_retried(monkeypatch):
-    """Non-rate-limit exceptions should propagate immediately without retrying."""
+def test_retry_exhausts_all_attempts(monkeypatch):
+    """Every attempt should be used before raising — no early bail-out."""
     import agents.research_agent as ra
     from unittest.mock import MagicMock
 
@@ -102,17 +102,17 @@ def test_non_rate_limit_error_not_retried(monkeypatch):
 
     def fake_run(topic):
         call_count["n"] += 1
-        raise ValueError("some other error")
+        raise Exception("transient error")
 
     mock_search = MagicMock()
     mock_search.run.side_effect = fake_run
     monkeypatch.setattr(ra, "_search", mock_search)
     monkeypatch.setattr(ra, "_RETRY_DELAY", 0)
 
-    with pytest.raises(ValueError, match="some other error"):
+    with pytest.raises(RuntimeError):
         ra._search_with_retry("test topic")
 
-    assert call_count["n"] == 1  # must not have retried
+    assert call_count["n"] == ra._MAX_RETRIES
 
 
 # ── Request / Response models ─────────────────────────────────────────────────
